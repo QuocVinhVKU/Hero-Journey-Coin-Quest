@@ -16,7 +16,19 @@ public class Player : MonoBehaviour
     public static Player instance;
 
     private PlayerState playerState;
-    [SerializeField] float speed;
+
+    [Header("PlayerStats")]
+    [SerializeField] float playerHp;
+    public float playerAtk;
+    [SerializeField] float playerSpeed;
+    [SerializeField] float playerJumpForce;
+
+    //Player logic
+    private bool isOnGround;
+    bool rightPressed, leftPressed, jumpPressed;
+    bool isJump;
+    bool animFallGround;
+
     [SerializeField] GameObject skill_4;
     private Rigidbody2D playerRb;
     private Animator playerAnim;
@@ -31,43 +43,113 @@ public class Player : MonoBehaviour
     {
         skill_4.SetActive(false);
     }
+    
     private void Update()
     {
-        PlayerMovement();
+        //PlayerMovement();
+        //Jump();
+        if (rightPressed)
+        {
+            PlayerMovement(1f);
+        }
+        if (leftPressed)
+        {
+            PlayerMovement(-1f);
+        }
+        playerAnim.SetFloat("yVelocity", playerRb.velocity.y);
+        if ((!rightPressed && !leftPressed && !jumpPressed)) 
+        {
+            playerAnim.SetBool("moving", false);
+            playerState = PlayerState.idle;
+        }
+
+
     }
-    protected void PlayerMovement()
+    public void RightButton(bool _rightPressed)
     {
-        if(playerState != PlayerState.attacking)
+        
+        leftPressed = false;
+        jumpPressed = false;
+        rightPressed = _rightPressed;
+    }
+    public void LeftButton(bool _leftPressed)
+    {
+        rightPressed = false;
+        jumpPressed = false;
+        leftPressed = _leftPressed;
+    }
+
+    public void JumpButton(bool _jumpPressed)
+    {
+        leftPressed = false;
+        rightPressed = false;
+        jumpPressed = _jumpPressed;
+        Jump();
+    }
+    protected void PlayerMovement(float posX)
+    {
+        if(playerState != PlayerState.attacking && playerRb.velocity.y <= 0)
         {
             playerState = PlayerState.moving;
-            //move player position and change animation         
-            float moveHor = InputManager.Instance.PlayerMoveInput();
-            Vector3 movement = new Vector3(moveHor, 0, 0) * speed * Time.deltaTime;
+
+            Vector3 movement = new Vector3(posX, 0, 0) * playerSpeed * Time.deltaTime;
             playerRb.transform.position += movement;
 
-            //change animation         
-            if (movement.magnitude > 0)
+            playerAnim.SetBool("moving", true);
+
+            if (movement.x < 0)
             {
-                playerAnim.SetBool("moving", true);
-                if (movement.x < 0)
-                {
-                    transform.localScale = new Vector3(-1f, 1f, 1f);
-                }
-                else
-                {
-                    transform.localScale = new Vector3(1f, 1f, 1f);
-                }
+                transform.localScale = new Vector3(-1f, 1f, 1f);
             }
             else
             {
-                playerAnim.SetBool("moving", false);
+                transform.localScale = new Vector3(1f, 1f, 1f);
             }
+        }
+    }
+    public void Jump()
+    {
+        //AudioManager.Instance.JumpAudio();
+        if (isOnGround)
+        {
+            playerState = PlayerState.jump;
+            isJump = true;
+            playerAnim.SetBool("jump", true);
+            playerRb.velocity = Vector2.up * playerJumpForce;
+        }
 
+       
+    }
+    IEnumerator DelayFallGround()
+    {
+        animFallGround = true;
+        yield return new WaitForSeconds(0.25f);
+        animFallGround = false;
+    }
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(collision.gameObject.tag == "Ground")
+        {
+            isOnGround = true;
+            isJump = false;
+            playerAnim.SetBool("jump", false);
+            if (!rightPressed && !leftPressed)
+            {
+                playerState = PlayerState.idle;
+            }
+            StartCoroutine(DelayFallGround());
+        }
+    }
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.tag == "Ground")
+        {
+            isOnGround = false;
         }
     }
     public void Skill_1()
     {
-        if(playerState != PlayerState.attacking)
+        if (playerState != PlayerState.attacking && animFallGround == false && isOnGround)
         {
             playerState = PlayerState.attacking;
 
@@ -85,7 +167,7 @@ public class Player : MonoBehaviour
     }
     public void Skill_2()
     {
-        if(playerState != PlayerState.attacking)
+        if (playerState != PlayerState.attacking && animFallGround == false && isOnGround)
         {
             playerState = PlayerState.attacking;
 
@@ -103,7 +185,7 @@ public class Player : MonoBehaviour
     }
     public void Skill_3()
     {
-        if (playerState != PlayerState.attacking)
+        if (playerState != PlayerState.attacking && animFallGround == false && isOnGround)
         {
             playerState = PlayerState.attacking;
 
@@ -114,13 +196,13 @@ public class Player : MonoBehaviour
     IEnumerator WaitFor_Skill_3_Animation()
     {
         //lengh animation: 1.5s
-        yield return new WaitForSeconds(0.583f);
+        yield return new WaitForSeconds(0.3f);
         playerAnim.SetBool("attack_skill_3", false);
         playerState = PlayerState.idle;
     }
     public void Skill_4()
     {
-        if (playerState != PlayerState.attacking)
+        if (playerState != PlayerState.attacking && animFallGround == false && isOnGround)
         {
             playerState = PlayerState.attacking;
 

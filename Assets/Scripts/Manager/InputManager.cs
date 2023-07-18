@@ -19,10 +19,4 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    public float PlayerMoveInput()
-    {
-        float moveHorizontal = Input.GetAxis("Horizontal");
-
-        return moveHorizontal;
-    }
 }
